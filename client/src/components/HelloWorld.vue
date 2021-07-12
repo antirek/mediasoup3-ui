@@ -1,5 +1,6 @@
 <template>
   <div class="hello">
+    <div>{{peerId}}</div>
     <button @click="getRtpCapabilities">join</button>
     <video id="video"></video>
   </div>
@@ -8,11 +9,15 @@
 <script>
 import * as mediasoupClient from "mediasoup-client";
 import * as axios from 'axios';
+import * as delay from 'delay';
 
 let device = new mediasoupClient.Device();
+var ID = function () {  
+  return Math.random().toString(36).substr(2, 9);
+};
 
 let peer = {
-  peerId: '121212',
+  peerId: ID(),
   sendTransport: null,
   recvTransport: null,
   producers:[],
@@ -30,6 +35,7 @@ export default {
   name: 'HelloWorld',
   methods: {
     getRtpCapabilities: async function(){
+      // this.peerId = peer.peerId;
       const {routerRtpCapabilities} = await getFromServer('/rtpCapabilities');
 
       console.log('load rtp cap from server', routerRtpCapabilities);
@@ -95,11 +101,14 @@ export default {
         encodings: camEncodings(),
       });
 
-      console.log('send ready', camVideoProducer);
+      // let camAudioProducer = await peer.sendTransport.produce({
+      //  track: localCam.getAudioTracks()[0],
+      // });
 
+      // console.log('send ready', {camVideoProducer, camAudioProducer});
+      console.log('send ready', {camVideoProducer});
 
-
-
+      
       let {transportOptions} = await getFromServer(`/create-transport/recv/${peer.peerId}`);
 
       console.log('transportOptions', transportOptions);
@@ -121,12 +130,21 @@ export default {
       });
 
 
+
       let consumerParameters = await getFromServer(`/recv-track/${peer.peerId}`, {
         mediaTag: 'video',
         mediaPeerId: peer.peerId,
         rtpCapabilities: device.rtpCapabilities
       });
 
+      if (consumerParameters.status && consumerParameters.status === 'not ready') {
+        await delay(10000);
+        consumerParameters = await getFromServer(`/recv-track/${peer.peerId}`, {
+          mediaTag: 'video',
+          mediaPeerId: peer.peerId,
+          rtpCapabilities: device.rtpCapabilities
+        });
+      }
       console.log('consumer parameters', consumerParameters);
       let consumer = await peer.recvTransport.consume({
         ...consumerParameters,
@@ -139,11 +157,16 @@ export default {
       el.srcObject = new MediaStream([ consumer.track.clone() ]);
       el.play();
 
-      
     }
   },
   props: {
     msg: String,
+    //peerId: String,
+  },
+  computed: {
+    peerId: function() {
+      return peer.peerId;
+    }
   }
 }
 </script>

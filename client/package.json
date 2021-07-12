@@ -10,6 +10,7 @@
   "dependencies": {
     "axios": "^0.21.1",
     "core-js": "^3.6.5",
+    "delay": "^5.0.0",
     "mediasoup-client": "^3.6.36",
     "vue": "^2.6.11"
   },
