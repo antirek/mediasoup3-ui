@@ -73,10 +73,8 @@ export default {
       peer.sendTransport.on('produce', async ({ kind, rtpParameters, appData },
                                    callback, errback) => {
         console.log('transport produce event', appData.mediaTag);
-        let { error, id } = await getFromServer('/send-track/', {
-          kind,
+        let { error, id } = await getFromServer(`/send-track/${kind}/${peer.peerId}`, {
           rtpParameters,
-          appData
         });
         if (error) {
           console.err('error setting up server-side producer', error);
@@ -101,12 +99,12 @@ export default {
         encodings: camEncodings(),
       });
 
-      // let camAudioProducer = await peer.sendTransport.produce({
-      //  track: localCam.getAudioTracks()[0],
-      // });
+      let camAudioProducer = await peer.sendTransport.produce({
+        track: localCam.getAudioTracks()[0],
+      });
 
-      // console.log('send ready', {camVideoProducer, camAudioProducer});
-      console.log('send ready', {camVideoProducer});
+      console.log('send ready', {camVideoProducer, camAudioProducer});
+      // console.log('send ready', {camVideoProducer});
 
       
       let {transportOptions} = await getFromServer(`/create-transport/recv/${peer.peerId}`);
@@ -129,17 +127,15 @@ export default {
         callback();
       });
 
+      const kind = 'video';
 
-
-      let consumerParameters = await getFromServer(`/recv-track/${peer.peerId}`, {
-        mediaTag: 'video',
-        mediaPeerId: peer.peerId,
+      let consumerParameters = await getFromServer(`/recv-track/${kind}/${peer.peerId}`, {
         rtpCapabilities: device.rtpCapabilities
       });
 
       if (consumerParameters.status && consumerParameters.status === 'not ready') {
         await delay(10000);
-        consumerParameters = await getFromServer(`/recv-track/${peer.peerId}`, {
+        consumerParameters = await getFromServer(`/recv-track/${kind}/${peer.peerId}`, {
           mediaTag: 'video',
           mediaPeerId: peer.peerId,
           rtpCapabilities: device.rtpCapabilities
@@ -148,7 +144,6 @@ export default {
       console.log('consumer parameters', consumerParameters);
       let consumer = await peer.recvTransport.consume({
         ...consumerParameters,
-        appData: { peerId: peer.peerId, mediaTag: 'video'}
       });
 
       console.log('consumer', consumer);
