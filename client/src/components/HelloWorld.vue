@@ -3,6 +3,7 @@
     <div>{{peerId}}</div>
     <button @click="getRtpCapabilities">join</button>
     <video id="video"></video>
+    <audio id="audio"></audio>
   </div>
 </template>
 
@@ -127,7 +128,9 @@ export default {
         callback();
       });
 
-      const kind = 'video';
+      let kind;
+      
+      kind = 'video';
 
       let consumerParameters = await getFromServer(`/recv-track/${kind}/${peer.peerId}`, {
         rtpCapabilities: device.rtpCapabilities
@@ -135,22 +138,46 @@ export default {
 
       if (consumerParameters.status && consumerParameters.status === 'not ready') {
         await delay(10000);
-        consumerParameters = await getFromServer(`/recv-track/${kind}/${peer.peerId}`, {
-          mediaTag: 'video',
-          mediaPeerId: peer.peerId,
+        consumerParameters = await getFromServer(`/recv-track/${kind}/${peer.peerId}`, {          
+          rtpCapabilities: device.rtpCapabilities
+        });
+      }
+      
+      console.log('consumer parameters', consumerParameters);
+      let videoConsumer = await peer.recvTransport.consume({
+        ...consumerParameters,
+      });
+
+      //console.log('consumer', consumer);
+
+      let el = document.getElementById('video');
+      el.srcObject = new MediaStream([ videoConsumer.track.clone() ]);
+      el.play();
+
+
+      kind = 'audio';
+
+      consumerParameters = await getFromServer(`/recv-track/${kind}/${peer.peerId}`, {
+        rtpCapabilities: device.rtpCapabilities
+      });
+
+      if (consumerParameters.status && consumerParameters.status === 'not ready') {
+        await delay(10000);
+        consumerParameters = await getFromServer(`/recv-track/${kind}/${peer.peerId}`, {          
           rtpCapabilities: device.rtpCapabilities
         });
       }
       console.log('consumer parameters', consumerParameters);
-      let consumer = await peer.recvTransport.consume({
+      let audioconsumer = await peer.recvTransport.consume({
         ...consumerParameters,
       });
 
-      console.log('consumer', consumer);
+      //console.log('consumer', consumer);
 
-      let el = document.getElementById('video');
-      el.srcObject = new MediaStream([ consumer.track.clone() ]);
-      el.play();
+      let elAudio = document.getElementById('audio');
+      elAudio.srcObject = new MediaStream([ audioconsumer.track.clone() ]);
+      // el.setAttribute('autoplay', true);
+      elAudio.play();
 
     }
   },
